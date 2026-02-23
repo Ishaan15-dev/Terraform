@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+    tools {
+        terraform 'terraform'
+    }
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Choose apply or destroy')
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Git branch to use')
+    }
+    stages {
+        stage('Checkout SCM') {
+            steps {
+                git branch: "${params.BRANCH_NAME}",
+                    url: 'https://github.com/Devops1qaz/Wrapper-Code.git',
+                    credentialsId: ''
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                dir("Env/Dev/Network-Skeleton") {  
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_CONFIGURE']]) {
+                        sh 'terraform init'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                dir("Env/Dev/Network-Skeleton") {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_CONFIGURE']]) {
+                        sh 'terraform plan'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Apply/Destroy') {
+            steps {
+                dir("Env/Dev/Network-Skeleton") {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_CONFIGURE']]) {
+                        script {
+                            if (params.ACTION == 'apply') {
+                                sh 'terraform apply -auto-approve'
+                            } else {
+                                sh 'terraform destroy -auto-approve'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo " Terraform ${params.ACTION} completed successfully!"
+        }
+        failure {
+            echo " Terraform ${params.ACTION} failed!"
+        }
+    }
+}
