@@ -1,0 +1,68 @@
+
+pipeline {
+    agent any
+    tools {
+        terraform 'terraform'
+    }
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Choose apply or destroy')
+        string(name: 'BRANCH_NAME', defaultValue: 'SCRUM-466-kawalpreet', description: 'Git branch to use')
+    }
+    stages {
+        stage('Checkout SCM') {
+            steps {
+                git branch: "${params.BRANCH_NAME}",
+                    url: 'https://github.com/Snaatak-Apt-Get-Swag/terraform.git',
+                    credentialsId: 'git'
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                dir("Env/Dev/Applications/Attendance-API-Infra/Auto-Scaling-Group") {  
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_Configure']]) {
+                        sh 'terraform init -input=false'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                dir("Env/Dev/Applications/Attendance-API-Infra/Auto-Scaling-Group") {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_Configure']]) {
+                        sh 'terraform plan -out=tfplan -input=false'
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Apply/Destroy') {
+            steps {
+                dir("Env/Dev/Applications/Attendance-API-Infra/Auto-Scaling-Group") {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS_Configure']]) {
+                        script {
+                            if (params.ACTION == 'apply') {
+                                sh 'terraform apply -auto-approve tfplan'
+                            } else {
+                                sh 'terraform destroy -auto-approve'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo "✔ Terraform ${params.ACTION} completed successfully!"
+        }
+        failure {
+            echo "❌ Terraform ${params.ACTION} failed!"
+        }
+    }
+}

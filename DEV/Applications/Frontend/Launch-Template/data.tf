@@ -1,0 +1,36 @@
+data "terraform_remote_state" "vpc" {
+  backend = "s3"
+  config = {
+    bucket = "otms-app-aptgetswag-bucket"
+    key    = "env/dev/network-skeleton/vpc/vpc.tfstate"
+    region = "us-east-1"
+  }
+}
+
+data "terraform_remote_state" "subnets" {
+  backend = "s3"
+  config = {
+    bucket = "otms-app-aptgetswag-bucket"
+    key    = "env/dev/network-skeleton/subnets/subnets.tfstate"
+    region = "us-east-1"
+  }
+}
+
+
+data "terraform_remote_state" "frontend_sg" {
+  backend = "s3"
+  config = {
+    bucket = "otms-app-aptgetswag-bucket"
+    key    = "env/dev/applications/frontend-api/sg.tfstate"
+    region = "us-east-1"
+  }
+}
+
+data "terraform_remote_state" "ssh_key" {
+  backend = "s3"
+  config = {
+    bucket = "otms-app-aptgetswag-bucket"
+    key    = "env/dev/network-skeleton/ssh-key/ssh-key.tfstate"
+    region = "us-east-1"
+  }
+}
