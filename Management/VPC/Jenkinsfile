@@ -1,0 +1,50 @@
+@Library('shared-library@SCRUM-422-ishaan') _
+
+pipeline {
+    agent { label 'main' }
+
+    tools { terraform 'terraform' }
+
+    environment {
+        TF_DIR = "${params.TF_DIR}"
+    }
+
+    stages {
+        stage('Clean Workspace') {
+            steps { cleanWs() }
+        }
+
+        stage('Checkout Terraform Code') {
+            steps {
+                script {
+                    terraformCheckout.run(this, params.GIT_REPO, params.GIT_BRANCH, 'git')
+                }
+            }
+        }
+
+        stage('Terraform Fmt') {
+            steps { script { terraformFmt(this, TF_DIR) } }
+        }
+
+        stage('Terraform Init') {
+            steps { script { terraformInit(this, TF_DIR) } }
+        }
+
+        stage('Terraform Validate') {
+            steps { script { terraformValidate(this, TF_DIR) } }
+        }
+
+        stage('Terraform Plan') {
+            steps { script { terraformPlan(this, TF_DIR) } }
+        }
+
+        stage('Terraform Apply') {
+            when { expression { params.RUN_APPLY } }
+            steps { script { terraformApply(this, TF_DIR) } }
+        }
+    }
+
+    post {
+        always { echo "===== Terraform CD Pipeline Finished =====" }
+    }
+}
